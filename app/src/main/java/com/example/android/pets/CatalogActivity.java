@@ -15,18 +15,28 @@
  */
 package com.example.android.pets;
 
+import android.content.ContentValues;
 import android.content.Intent;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.TextView;
+
+import com.example.android.pets.PetContract.PetEntry;
+import com.example.android.pets.PetDbHelper;
 
 /**
  * Displays list of pets that were entered and stored in the app.
  */
 public class CatalogActivity extends AppCompatActivity {
+
+    /* Database helper that will provide access to the database */
+    private PetDbHelper mDbHelper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,6 +52,67 @@ public class CatalogActivity extends AppCompatActivity {
                 startActivity(intent);
             }
         });
+
+        // To access the database, initialize the subclass of SQLiteOpenHelper
+        // and pass the context, which is the current activity
+        mDbHelper = new PetDbHelper(this);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        displayDatabaseInfo();
+    }
+
+    /**
+     * Temporary helper method to display information in the onscreen TextView
+     * about the state of the pets database
+     */
+    public void displayDatabaseInfo() {
+
+        // Create and/or open a database to read from it
+        SQLiteDatabase db = mDbHelper.getReadableDatabase();
+
+        // Perform this raw SQL query "SELECT * FROM pets"
+        // to get a Cursor that contains all rows from the pets table
+        Cursor cursor = db.rawQuery("SELECT * FROM " + PetEntry.TABLE_NAME, null);
+        try {
+            // Display the number of rows in the Cursor
+            // Which reflects the number of rows in the pets database table
+            TextView displayView = (TextView) findViewById(R.id.text_view_pet);
+            displayView.setText("Number of rows in pets database table: " + cursor.getCount());
+        }
+        finally {
+            // Always close the cursor after finishing reading from it
+            // This releases all its resources and set it as invalid
+            cursor.close();
+        }
+    }
+
+    /**
+     * Helper method to help insert hardcoded pet data into the database (for debugging only)
+     */
+    private void insertPet() {
+        // Get the database in writable mode
+        SQLiteDatabase db = mDbHelper.getWritableDatabase();
+
+        // Create a ContentValues object where column names are the keys
+        // and attributes are the values
+        ContentValues values = new ContentValues();
+        values.put(PetEntry.COLUMN_PET_NAME, "Toto");
+        values.put(PetEntry.COLUMN_PET_BREED, "Terrier");
+        values.put(PetEntry.COLUMN_PET_GENDER, PetEntry.GENDER_MALE);
+        values.put(PetEntry.COLUMN_PET_WEIGHT, 7);
+
+        // Insert a new row for this newly added entry in the database, return
+        // the ID of that new row
+        // First argument is the pets table name
+        // Second argument is the name of the column in which the framework
+        // can insert NULL in the event that the ContentValues is empty
+        // When set to NULL, the framework will not insert a row when there
+        // are no values
+        // Third argument is the ContentValues object containing the info of this entry
+        long newRowId = db.insert(PetEntry.TABLE_NAME, null, values);
     }
 
     @Override
@@ -58,7 +129,8 @@ public class CatalogActivity extends AppCompatActivity {
         switch (item.getItemId()) {
             // Respond to a click on the "Insert dummy data" menu option
             case R.id.action_insert_dummy_data:
-                // Do nothing for now
+                insertPet();
+                displayDatabaseInfo();
                 return true;
             // Respond to a click on the "Delete all entries" menu option
             case R.id.action_delete_all_entries:
