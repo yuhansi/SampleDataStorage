@@ -18,7 +18,7 @@ package com.example.android.pets;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
@@ -27,18 +27,12 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
 
-import com.example.android.pets.PetContract.PetEntry;
-import com.example.android.pets.PetDbHelper;
-
-import org.w3c.dom.Text;
+import com.example.android.pets.data.PetContract.PetEntry;
 
 /**
  * Displays list of pets that were entered and stored in the app.
  */
 public class CatalogActivity extends AppCompatActivity {
-
-    /* Database helper that will provide access to the database */
-    private PetDbHelper mDbHelper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,9 +49,6 @@ public class CatalogActivity extends AppCompatActivity {
             }
         });
 
-        // To access the database, initialize the subclass of SQLiteOpenHelper
-        // and pass the context, which is the current activity
-        mDbHelper = new PetDbHelper(this);
     }
 
     @Override
@@ -72,9 +63,6 @@ public class CatalogActivity extends AppCompatActivity {
      */
     public void displayDatabaseInfo() {
 
-        // Create and/or open a database to read from it
-        SQLiteDatabase db = mDbHelper.getReadableDatabase();
-
         // Define a projection that specifies which columns from the database
         // will actually be used after this query
         String[] projection = {
@@ -83,15 +71,14 @@ public class CatalogActivity extends AppCompatActivity {
                 PetEntry.COLUMN_PET_BREED,
                 PetEntry.COLUMN_PET_GENDER,
                 PetEntry.COLUMN_PET_WEIGHT };
-        // Performa query on the pets table
-        Cursor cursor = db.query(
-                PetEntry.TABLE_NAME, // The table to query
-                projection, // The columns to return
-                null, // The columns for the WHERE clause
-                null, // The values for the WHERE clause
-                null, //Do not groups rows
-                null, // Do not filter by row groups
-                null); // The sort order
+        // Perform query on the content provider using the ContentResolver
+        // Use CONTENT_URI to access the pet data
+        Cursor cursor = getContentResolver().query(
+                PetEntry.CONTENT_URI,              // The content URI of the pets table
+                projection,                        // The columns to return for each row
+                null,                              // Selection criteria
+                null,                              // Selection criteria
+                null);                             // The sort order for the returned rows
 
         TextView displayView = (TextView) findViewById(R.id.text_view_pet);
 
@@ -146,8 +133,6 @@ public class CatalogActivity extends AppCompatActivity {
      * Helper method to help insert hardcoded pet data into the database (for debugging only)
      */
     private void insertPet() {
-        // Get the database in writable mode
-        SQLiteDatabase db = mDbHelper.getWritableDatabase();
 
         // Create a ContentValues object where column names are the keys
         // and attributes are the values
@@ -157,15 +142,11 @@ public class CatalogActivity extends AppCompatActivity {
         values.put(PetEntry.COLUMN_PET_GENDER, PetEntry.GENDER_MALE);
         values.put(PetEntry.COLUMN_PET_WEIGHT, 7);
 
-        // Insert a new row for this newly added entry in the database, return
-        // the ID of that new row
-        // First argument is the pets table name
-        // Second argument is the name of the column in which the framework
-        // can insert NULL in the event that the ContentValues is empty
-        // When set to NULL, the framework will not insert a row when there
-        // are no values
-        // Third argument is the ContentValues object containing the info of this entry
-        long newRowId = db.insert(PetEntry.TABLE_NAME, null, values);
+        // Insert a new row for this newly added entry into the provider using the
+        // ContentResolver
+        // Use CONTENT_URI to indicate the insertion into the pets database table
+        // Receive the new content URI that will allow future access to the data
+        Uri newUri = getContentResolver().insert(PetEntry.CONTENT_URI, values);
     }
 
     @Override
